@@ -20,14 +20,16 @@ type Workout = {
   image?: string;
   imageUrl?: string;
   thumbnail?: string;
-  muscleGroups?: string[];
+  muscleGroups?: string[] | string;
   sets?: number | string;
   reps?: number | string;
+  difficulty?: string;
   instructions?: string[] | string;
   [key: string]: unknown;
 };
 
 const API = "https://api.abcz.workers.dev/api/fitlog";
+const ALTERNATIVE_API = "https://api.api-store.workers.dev/api/fitlog";
 
 export default function WorkoutDetails() {
   const params = useParams<{ id: string }>();
@@ -39,55 +41,90 @@ export default function WorkoutDetails() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadWorkout() {
+      setLoading(true);
+      setError("");
+
       try {
-        setLoading(true);
-        setError("");
+        let result: unknown = null;
+        let loaded = false;
 
-        const response = await fetch(
-          `${API}/${encodeURIComponent(id)}`
-        );
+        for (const api of [API, ALTERNATIVE_API]) {
+          try {
+            const response = await fetch(
+              `${api}/${encodeURIComponent(id)}`
+            );
 
-        if (!response.ok) {
-          throw new Error("Workout details load kora jayni.");
+            if (!response.ok) continue;
+
+            const data: unknown = await response.json();
+
+            let item: unknown = data;
+
+            if (data && typeof data === "object" && !Array.isArray(data)) {
+              const obj = data as Record<string, unknown>;
+              item = obj.data ?? obj.workout ?? obj.result ?? data;
+            }
+
+            if (Array.isArray(item)) {
+              item = item[0];
+            }
+
+            if (item && typeof item === "object") {
+              result = item;
+              loaded = true;
+              break;
+            }
+          } catch {
+            // Try the alternative API.
+          }
         }
 
-        const result: unknown = await response.json();
-        let item: unknown = result;
-
-        if (
-          result &&
-          typeof result === "object" &&
-          !Array.isArray(result)
-        ) {
-          const obj = result as Record<string, unknown>;
-          item = obj.data ?? obj.workout ?? obj.result ?? result;
+        if (!loaded || !result) {
+          throw new Error("Workout details could not be loaded.");
         }
 
-        if (Array.isArray(item)) {
-          item = item[0];
+        if (!cancelled) {
+          setWorkout(result as Workout);
         }
-
-        if (!item || typeof item !== "object") {
-          throw new Error("Workout data paoa jayni.");
-        }
-
-        setWorkout(item as Workout);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Something went wrong."
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     if (id) {
       loadWorkout();
+    } else {
+      setLoading(false);
+      setError("Workout ID is missing.");
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timer = window.setTimeout(() => {
+      setMessage("");
+    }, 2500);
+
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   function saveWorkout(type: "fitlog-plan" | "fitlog-saved") {
     if (!workout) return;
@@ -95,39 +132,40 @@ export default function WorkoutDetails() {
     const workoutId = String(workout.id ?? workout._id ?? id);
     const name = String(workout.name ?? workout.title ?? "Workout");
 
-    const entry = {
+    const entry: Workout = {
       ...workout,
       id: workoutId,
       name,
     };
 
     try {
-      const current = JSON.parse(
-        localStorage.getItem(type) || "[]"
-      ) as Workout[];
+      const stored = JSON.parse(localStorage.getItem(type) || "[]");
+      const current: Workout[] = Array.isArray(stored) ? stored : [];
 
-      if (
-        current.some(
-          (item) => String(item.id ?? item._id) === workoutId
-        )
-      ) {
+      const alreadyExists = current.some(
+        (item) => String(item.id ?? item._id) === workoutId
+      );
+
+      if (alreadyExists) {
         setMessage(
           type === "fitlog-plan"
-            ? "Workout already in your plan!"
-            : "Workout already saved!"
+            ? "Workout is already in today's plan."
+            : "Workout is already saved."
         );
         return;
       }
 
       if (type === "fitlog-plan" && current.length >= 5) {
-        setMessage("Your plan can contain up to 5 workouts.");
+        setMessage("Your plan is full. The limit is 5 workouts.");
         return;
       }
 
-      localStorage.setItem(
-        type,
-        JSON.stringify([...current, entry])
-      );
+      const updated = [...current, entry];
+
+      localStorage.setItem(type, JSON.stringify(updated));
+
+      // Notify the Navbar so its counters update immediately.
+      window.dispatchEvent(new Event("fitlog-storage"));
 
       setMessage(
         type === "fitlog-plan"
@@ -142,7 +180,7 @@ export default function WorkoutDetails() {
   if (loading) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center bg-[#171820] text-[#DFFF36]">
-        Loading workout...
+        <p className="animate-pulse font-bold">Loading workout...</p>
       </main>
     );
   }
@@ -151,16 +189,14 @@ export default function WorkoutDetails() {
     return (
       <main className="min-h-screen bg-[#171820] px-5 py-16 text-white">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-black">
-            Workout not found
-          </h1>
+          <h1 className="text-3xl font-black">Workout not found</h1>
 
           <p className="mt-3 text-gray-400">
-            {error || "Ei workout-er details paoa jayni."}
+            {error || "Workout details could not be found."}
           </p>
 
           <Link
-            href="/"
+            href="/#library"
             className="mt-6 inline-flex rounded-lg bg-[#DFFF36] px-5 py-3 font-bold text-black"
           >
             Back to Workouts
@@ -172,51 +208,53 @@ export default function WorkoutDetails() {
 
   const name = String(workout.name ?? workout.title ?? "Workout");
   const image = workout.image ?? workout.imageUrl ?? workout.thumbnail;
-  const description = workout.description;
+  const calories = workout.caloriesBurned ?? workout.calories;
 
-  const caloriesValue =
-    workout.caloriesBurned ?? workout.calories;
+  const categories = Array.isArray(workout.muscleGroups)
+    ? workout.muscleGroups
+    : typeof workout.muscleGroups === "string"
+      ? workout.muscleGroups.split(",").map((item) => item.trim()).filter(Boolean)
+      : workout.category
+        ? [workout.category]
+        : [];
 
   const instructions = Array.isArray(workout.instructions)
     ? workout.instructions
     : typeof workout.instructions === "string"
-      ? workout.instructions.split(/\n+/).filter(Boolean)
+      ? workout.instructions.split(/\n+/).map((step) => step.trim()).filter(Boolean)
       : [];
 
   const details = [
-    { label: "CATEGORY", value: workout.category },
-    {
-      label: "EQUIPMENT",
-      value: workout.equipment,
-    },
+    { label: "EQUIPMENT", value: workout.equipment },
+    { label: "DIFFICULTY", value: workout.difficulty },
+    { label: "SETS", value: workout.sets },
+    { label: "REPS", value: workout.reps },
     {
       label: "DURATION",
-      value:
-        workout.duration != null
-          ? `${workout.duration} min`
-          : undefined,
+      value: workout.duration != null ? `${workout.duration} min` : undefined,
     },
     {
       label: "CALORIES",
-      value:
-        caloriesValue != null
-          ? `${caloriesValue} kcal`
-          : "Not available",
+      value: calories != null ? `${calories} kcal` : undefined,
     },
     {
       label: "RATING",
-      value:
-        workout.rating != null
-          ? `★ ${workout.rating}`
-          : undefined,
+      value: workout.rating != null ? `★ ${workout.rating}` : undefined,
     },
-  ].filter(
-    (item) =>
-      item.value !== undefined && item.value !== ""
-  );
+  ];
 
   return (
     <main className="min-h-screen bg-[#171820] px-4 py-8 text-white sm:px-6 sm:py-12">
+      {message && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed right-4 top-5 z-50 rounded-lg border border-[#DFFF36] bg-[#20222D] px-5 py-3 text-sm font-bold text-[#DFFF36] shadow-lg"
+        >
+          {message}
+        </div>
+      )}
+
       <div className="mx-auto max-w-[1120px]">
         <Link
           href="/#library"
@@ -232,14 +270,12 @@ export default function WorkoutDetails() {
               <img
                 src={image}
                 alt={name}
-                className="h-full max-h-[500px] w-full object-cover"
+                className="min-h-[280px] max-h-[500px] w-full object-cover md:min-h-[420px]"
               />
             ) : (
               <div className="p-8 text-center text-gray-500">
                 <p className="text-6xl">🏋️</p>
-                <p className="mt-4">
-                  Workout image unavailable
-                </p>
+                <p className="mt-4">Workout image unavailable</p>
               </div>
             )}
           </div>
@@ -249,40 +285,54 @@ export default function WorkoutDetails() {
               WORKOUT DETAILS
             </p>
 
-            <h1 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">
+            <h1 className="mt-3 text-4xl font-black uppercase leading-tight sm:text-5xl">
               {name}
             </h1>
 
-            {typeof workout.category === "string" && (
-              <span className="mt-4 inline-block rounded-full border border-[#DFFF36]/40 px-3 py-1 text-xs font-bold text-[#DFFF36]">
-                {workout.category}
-              </span>
+            {categories.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <span
+                    key={category}
+                    className="rounded-full border border-[#DFFF36]/40 px-3 py-1 text-xs font-bold uppercase text-[#DFFF36]"
+                  >
+                    {category}
+                  </span>
+                ))}
+              </div>
             )}
 
             <p className="mt-5 leading-7 text-gray-300">
-              {typeof description === "string" && description
-                ? description
-                : "Add this workout to your plan and keep track of your fitness progress."}
+              {workout.description ||
+                "Add this workout to your plan and keep track of your fitness routine."}
             </p>
 
-            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {details.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-[#343643] bg-[#20222D] p-4"
-                >
-                  <p className="text-[10px] font-bold tracking-wider text-gray-400">
-                    {item.label}
-                  </p>
+            <section className="mt-7">
+              <h2 className="mb-3 text-sm font-black tracking-widest text-[#DFFF36]">
+                KEY SPECS
+              </h2>
 
-                  <p className="mt-2 break-words font-bold text-[#DFFF36]">
-                    {String(item.value)}
-                  </p>
-                </div>
-              ))}
-            </div>
+              <div className="overflow-hidden rounded-xl border border-[#343643] bg-[#20222D]">
+                {details.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-start justify-between gap-4 border-b border-[#343643] px-4 py-3 last:border-b-0"
+                  >
+                    <span className="text-xs font-bold tracking-wider text-gray-400">
+                      {item.label}
+                    </span>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <span className="text-right text-sm font-bold text-white">
+                      {item.value != null && item.value !== ""
+                        ? String(item.value)
+                        : "--"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <button
                 onClick={() => saveWorkout("fitlog-plan")}
                 className="rounded-lg bg-[#DFFF36] px-5 py-3 font-black text-black transition hover:bg-[#c9ed20]"
@@ -298,37 +348,29 @@ export default function WorkoutDetails() {
               </button>
             </div>
 
-            {message && (
-              <p
-                aria-live="polite"
-                className="mt-4 text-sm text-[#DFFF36]"
-              >
-                {message}
-              </p>
-            )}
+            <section className="mt-9">
+              <h2 className="text-xl font-black uppercase">Instructions</h2>
 
-            {instructions.length > 0 && (
-              <section className="mt-9">
-                <h2 className="text-xl font-black">
-                  How to Perform
-                </h2>
-
+              {instructions.length > 0 ? (
                 <ol className="mt-4 space-y-3">
                   {instructions.map((step, index) => (
                     <li
-                      key={index}
+                      key={`${index}-${step}`}
                       className="flex gap-3 text-sm leading-6 text-gray-300"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DFFF36] font-black text-black">
                         {index + 1}
                       </span>
-
                       <span>{step}</span>
                     </li>
                   ))}
                 </ol>
-              </section>
-            )}
+              ) : (
+                <p className="mt-3 text-sm text-gray-400">
+                  Instructions are not available for this workout.
+                </p>
+              )}
+            </section>
           </div>
         </div>
       </div>
