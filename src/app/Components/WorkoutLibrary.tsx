@@ -60,9 +60,7 @@ function normalizeWorkout(
       item.caloriesBurned) as number | string | undefined,
     rating: (item.rating ?? item.rate) as number | string | undefined,
     image: typeof image === "string" ? image : undefined,
-    description: String(
-      item.description ?? item.instructions ?? ""
-    ),
+    description: String(item.description ?? item.instructions ?? ""),
   };
 }
 
@@ -183,31 +181,33 @@ export default function WorkoutLibrary() {
   return (
     <section
       id="library"
-      className="mx-auto max-w-[1440px] px-4 py-12 sm:px-5 sm:py-16 lg:px-8"
+      className="mx-auto w-full max-w-[1440px] scroll-mt-20 px-3 py-10 sm:px-5 sm:py-14 lg:px-8 lg:py-16"
     >
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-xs font-black tracking-widest text-[#DFFF36]">
+      {/* Section Heading */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-black tracking-[0.18em] text-[#DFFF36] sm:text-xs">
             WORKOUT LIBRARY
           </p>
 
-          <h2 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+          <h2 className="mt-2 text-3xl font-black leading-tight text-white sm:text-4xl">
             THE <span className="text-[#DFFF36]">LIBRARY</span>
           </h2>
 
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 max-w-lg text-sm leading-6 text-gray-400 sm:text-base">
             Twelve lifts covering every major muscle group.
           </p>
         </div>
 
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        {/* Search and Sort */}
+        <div className="grid w-full grid-cols-1 gap-3 min-[420px]:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] sm:max-w-[560px] lg:max-w-[510px]">
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search workouts..."
             aria-label="Search workouts"
-            className="w-full rounded-lg border border-[#3A3C4B] bg-[#20222D] px-4 py-3 text-sm text-white outline-none placeholder:text-gray-500 focus:border-[#DFFF36] sm:w-[240px]"
+            className="h-12 min-w-0 rounded-lg border border-[#3A3C4B] bg-[#20222D] px-3 text-sm text-white outline-none placeholder:text-gray-500 focus:border-[#DFFF36] sm:px-4"
           />
 
           <select
@@ -216,7 +216,7 @@ export default function WorkoutLibrary() {
               setSortBy(event.target.value as SortOption)
             }
             aria-label="Sort workouts by"
-            className="w-full rounded-lg border border-[#3A3C4B] bg-[#20222D] px-4 py-3 text-sm text-white outline-none focus:border-[#DFFF36] sm:w-[200px]"
+            className="h-12 min-w-0 rounded-lg border border-[#3A3C4B] bg-[#20222D] px-3 text-sm text-white outline-none focus:border-[#DFFF36] sm:px-4"
           >
             <option value="duration">Sort by Duration</option>
             <option value="calories">Sort by Calories</option>
@@ -225,50 +225,93 @@ export default function WorkoutLibrary() {
         </div>
       </div>
 
+      {/* Loading Skeletons */}
       {loading && (
-        <div className="grid grid-cols-1 gap-5 pt-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+        <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
             <div
-              key={item}
-              className="h-[310px] animate-pulse rounded-xl border border-[#343643] bg-[#20222D]"
+              key={index}
+              className="h-[300px] animate-pulse rounded-xl border border-[#343643] bg-[#20222D] sm:h-[320px]"
             />
           ))}
         </div>
       )}
 
+      {/* Error State */}
       {!loading && error && (
-        <div className="mt-8 rounded-xl border border-red-900 bg-[#20222D] p-6">
+        <div className="mt-7 rounded-xl border border-red-900 bg-[#20222D] p-4 sm:p-6">
           <p className="font-bold text-red-400">
             Could not load workouts
           </p>
 
-          <p className="mt-2 break-words text-sm text-gray-300">
+          <p className="mt-2 break-words text-sm leading-6 text-gray-300">
             {error}
           </p>
 
           <button
+            type="button"
             onClick={() => window.location.reload()}
-            className="mt-4 rounded-md bg-[#DFFF36] px-4 py-2 text-sm font-bold text-black"
+            className="mt-4 min-h-11 rounded-md bg-[#DFFF36] px-5 py-2 text-sm font-bold text-black transition hover:bg-[#C6E22B]"
           >
             Try Again
           </button>
         </div>
       )}
 
+      {/* Empty State */}
       {!loading && !error && filteredWorkouts.length === 0 && (
-        <p className="py-12 text-center text-gray-400">
-          {search.trim()
-            ? "No workouts match your search."
-            : "No workouts available."}
-        </p>
+        <div className="px-3 py-12 text-center sm:py-16">
+          <p className="text-lg font-bold text-white">
+            No workouts found
+          </p>
+
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-400">
+            {search.trim()
+              ? "Try another search term or clear your search."
+              : "No workouts are available right now."}
+          </p>
+
+          {search.trim() && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="mt-4 rounded-md bg-[#DFFF36] px-5 py-2.5 text-sm font-bold text-black transition hover:bg-[#C6E22B]"
+            >
+              Clear Search
+            </button>
+          )}
+        </div>
       )}
 
+      {/* Workout Cards */}
       {!loading && !error && sortedWorkouts.length > 0 && (
-        <div className="grid grid-cols-1 gap-5 pt-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {sortedWorkouts.map((workout) => (
-            <WorkoutCard key={workout.id} workout={workout} />
-          ))}
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-3 pt-7">
+            <p className="text-sm text-gray-400">
+              Showing{" "}
+              <span className="font-bold text-white">
+                {sortedWorkouts.length}
+              </span>{" "}
+              {sortedWorkouts.length === 1 ? "workout" : "workouts"}
+            </p>
+
+            {search.trim() && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="shrink-0 text-sm font-semibold text-[#DFFF36] hover:underline"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 items-stretch gap-4 pt-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+            {sortedWorkouts.map((workout) => (
+              <WorkoutCard key={workout.id} workout={workout} />
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

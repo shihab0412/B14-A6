@@ -11,6 +11,7 @@ const Navbar = () => {
 
   const [planCount, setPlanCount] = useState(0);
   const [savedCount, setSavedCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     function updateCounts() {
@@ -32,10 +33,7 @@ const Navbar = () => {
 
     updateCounts();
 
-    // Updates when the same page changes the workout list.
     window.addEventListener("fitlog-storage", updateCounts);
-
-    // Updates when returning to the page or changing tabs.
     window.addEventListener("storage", updateCounts);
     window.addEventListener("focus", updateCounts);
 
@@ -46,18 +44,35 @@ const Navbar = () => {
     };
   }, [pathname]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  const navLinkClass = (active: boolean) =>
+    `block whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-bold transition ${
+      active
+        ? "bg-[#DFFF36] text-black"
+        : "text-white hover:bg-[#292B35]"
+    }`;
+
+  const counterClass =
+    "flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black";
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#30313A] bg-[#171820]">
-      <nav className="mx-auto flex min-h-[68px] max-w-[1120px] items-center justify-between gap-3 px-3 sm:px-5">
-        {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+      <nav className="relative mx-auto flex min-h-[64px] w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:min-h-[72px] sm:px-5 lg:px-8">
+        <Link
+          href="/"
+          aria-label="FitLog Home"
+          className="flex shrink-0 items-center gap-2"
+        >
           <Image
             src="/assets/logo.png"
             alt="FitLog Icon"
-            width={28}
-            height={28}
+            width={32}
+            height={32}
             priority
-            className="h-7 w-7 object-contain"
+            className="h-7 w-7 object-contain sm:h-8 sm:w-8"
           />
 
           <span className="text-lg font-black tracking-tight text-white sm:text-xl">
@@ -65,54 +80,145 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-1">
+        {/* Desktop Navigation */}
+        <div className="hidden items-center gap-2 md:flex">
           <Link
             href="/"
-            className={`rounded-full px-2 py-2 text-xs font-bold transition sm:px-4 sm:text-sm ${
-              pathname === "/"
-                ? "bg-[#DFFF36] text-black"
-                : "text-white hover:bg-[#292B35]"
-            }`}
+            aria-current={pathname === "/" ? "page" : undefined}
+            className={navLinkClass(pathname === "/")}
           >
             Workout
           </Link>
 
           <Link
             href="/my-plan"
-            className={`rounded-full px-2 py-2 text-xs font-bold transition sm:px-4 sm:text-sm ${
-              pathname === "/my-plan"
-                ? "bg-[#DFFF36] text-black"
-                : "text-white hover:bg-[#292B35]"
-            }`}
+            aria-current={pathname === "/my-plan" ? "page" : undefined}
+            className={navLinkClass(pathname === "/my-plan")}
           >
             My Plan
           </Link>
         </div>
 
-        {/* Plan and Saved counters */}
-        <div className="flex shrink-0 items-center gap-2 sm:gap-5">
+        {/* Desktop Counters */}
+        <div className="hidden shrink-0 items-center gap-4 md:flex lg:gap-5">
           <Link
             href="/my-plan"
-            className="flex items-center gap-1 text-xs font-bold text-white sm:gap-2 sm:text-sm"
+            className="flex items-center gap-2 text-sm font-bold text-white transition hover:text-[#DFFF36]"
           >
             <span>Plan</span>
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#DFFF36] px-1 text-xs font-black text-black">
+            <span className={`${counterClass} bg-[#DFFF36] text-black`}>
               {planCount}
             </span>
           </Link>
 
           <Link
             href="/my-plan"
-            className="flex items-center gap-1 text-xs font-bold text-white sm:gap-2 sm:text-sm"
+            className="flex items-center gap-2 text-sm font-bold text-white transition hover:text-[#DFFF36]"
           >
             <span>Saved</span>
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full border border-[#555763] px-1 text-xs font-semibold text-white">
+            <span
+              className={`${counterClass} border border-[#555763] text-white`}
+            >
               {savedCount}
             </span>
           </Link>
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-navigation"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#343643] text-white transition hover:border-[#DFFF36] hover:text-[#DFFF36] md:hidden"
+        >
+          {menuOpen ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="23"
+              height="23"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="23"
+              height="23"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16" />
+              <path d="M4 12h16" />
+              <path d="M4 18h16" />
+            </svg>
+          )}
+        </button>
       </nav>
+
+      {/* Mobile Dropdown */}
+      {menuOpen && (
+        <div
+          id="mobile-navigation"
+          className="border-t border-[#30313A] bg-[#171820] px-4 pb-5 pt-4 md:hidden"
+        >
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-2">
+            <Link
+              href="/"
+              aria-current={pathname === "/" ? "page" : undefined}
+              className={navLinkClass(pathname === "/")}
+            >
+              Workout
+            </Link>
+
+            <Link
+              href="/my-plan"
+              aria-current={pathname === "/my-plan" ? "page" : undefined}
+              className={navLinkClass(pathname === "/my-plan")}
+            >
+              My Plan
+            </Link>
+
+            <div className="my-2 border-t border-[#30313A]" />
+
+            <Link
+              href="/my-plan"
+              className="flex items-center justify-between rounded-lg px-4 py-3 text-sm font-bold text-white transition hover:bg-[#292B35]"
+            >
+              <span>Plan</span>
+              <span className={`${counterClass} bg-[#DFFF36] text-black`}>
+                {planCount}
+              </span>
+            </Link>
+
+            <Link
+              href="/my-plan"
+              className="flex items-center justify-between rounded-lg px-4 py-3 text-sm font-bold text-white transition hover:bg-[#292B35]"
+            >
+              <span>Saved</span>
+              <span
+                className={`${counterClass} border border-[#555763] text-white`}
+              >
+                {savedCount}
+              </span>
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
