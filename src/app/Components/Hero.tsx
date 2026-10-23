@@ -3,8 +3,8 @@ import Link from "next/link";
 
 const Hero = () => {
   return (
-    <section className="mx-auto max-w-[1120px] px-5 pt-8">
-      <div className="relative flex min-h-[360px] flex-col items-center justify-between overflow-hidden rounded-2xl border border-[#3A3C4B] bg-[#252838] px-6 py-10 sm:px-10 md:flex-row md:px-12">
+    <section className="mx-auto max-w-[1280px] px-5 pt-8">
+      <div className="relative flex min-h-[448px] flex-col items-center justify-between overflow-hidden rounded-2xl border border-[#3A3C4B] bg-[#1d1e24] px-6 py-10 sm:px-10 md:flex-row md:px-12">
         {/* Left Content */}
         <div className="relative z-10 max-w-[570px]">
           <p className="mb-4 text-xs font-black tracking-wider text-[#DFFF36]">
