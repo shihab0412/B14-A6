@@ -82,4 +82,4 @@ This project can be deployed on [Vercel](https://vercel.com/).
 
 **Project name:** FitLog — Workout Library
 
-**Framework:** Next.js
+**Framework:** Next.js .
