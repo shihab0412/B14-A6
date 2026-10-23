@@ -15,10 +15,14 @@ type Workout = {
   equipment?: string;
   duration?: number | string;
   calories?: number | string;
+  caloriesBurned?: number | string;
   rating?: number | string;
   image?: string;
   imageUrl?: string;
   thumbnail?: string;
+  muscleGroups?: string[];
+  sets?: number | string;
+  reps?: number | string;
   instructions?: string[] | string;
   [key: string]: unknown;
 };
@@ -49,10 +53,13 @@ export default function WorkoutDetails() {
         }
 
         const result: unknown = await response.json();
-
         let item: unknown = result;
 
-        if (result && typeof result === "object" && !Array.isArray(result)) {
+        if (
+          result &&
+          typeof result === "object" &&
+          !Array.isArray(result)
+        ) {
           const obj = result as Record<string, unknown>;
           item = obj.data ?? obj.workout ?? obj.result ?? result;
         }
@@ -77,7 +84,9 @@ export default function WorkoutDetails() {
       }
     }
 
-    if (id) loadWorkout();
+    if (id) {
+      loadWorkout();
+    }
   }, [id]);
 
   function saveWorkout(type: "fitlog-plan" | "fitlog-saved") {
@@ -97,7 +106,11 @@ export default function WorkoutDetails() {
         localStorage.getItem(type) || "[]"
       ) as Workout[];
 
-      if (current.some((item) => String(item.id ?? item._id) === workoutId)) {
+      if (
+        current.some(
+          (item) => String(item.id ?? item._id) === workoutId
+        )
+      ) {
         setMessage(
           type === "fitlog-plan"
             ? "Workout already in your plan!"
@@ -138,10 +151,14 @@ export default function WorkoutDetails() {
     return (
       <main className="min-h-screen bg-[#171820] px-5 py-16 text-white">
         <div className="mx-auto max-w-3xl text-center">
-          <h1 className="text-3xl font-black">Workout not found</h1>
+          <h1 className="text-3xl font-black">
+            Workout not found
+          </h1>
+
           <p className="mt-3 text-gray-400">
             {error || "Ei workout-er details paoa jayni."}
           </p>
+
           <Link
             href="/"
             className="mt-6 inline-flex rounded-lg bg-[#DFFF36] px-5 py-3 font-bold text-black"
@@ -156,6 +173,10 @@ export default function WorkoutDetails() {
   const name = String(workout.name ?? workout.title ?? "Workout");
   const image = workout.image ?? workout.imageUrl ?? workout.thumbnail;
   const description = workout.description;
+
+  const caloriesValue =
+    workout.caloriesBurned ?? workout.calories;
+
   const instructions = Array.isArray(workout.instructions)
     ? workout.instructions
     : typeof workout.instructions === "string"
@@ -164,11 +185,35 @@ export default function WorkoutDetails() {
 
   const details = [
     { label: "CATEGORY", value: workout.category },
-    { label: "EQUIPMENT", value: workout.equipment },
-    { label: "DURATION", value: workout.duration ? `${workout.duration} min` : undefined },
-    { label: "CALORIES", value: workout.calories ? `${workout.calories} kcal` : undefined },
-    { label: "RATING", value: workout.rating ? `★ ${workout.rating}` : undefined },
-  ].filter((item) => item.value !== undefined && item.value !== "");
+    {
+      label: "EQUIPMENT",
+      value: workout.equipment,
+    },
+    {
+      label: "DURATION",
+      value:
+        workout.duration != null
+          ? `${workout.duration} min`
+          : undefined,
+    },
+    {
+      label: "CALORIES",
+      value:
+        caloriesValue != null
+          ? `${caloriesValue} kcal`
+          : "Not available",
+    },
+    {
+      label: "RATING",
+      value:
+        workout.rating != null
+          ? `★ ${workout.rating}`
+          : undefined,
+    },
+  ].filter(
+    (item) =>
+      item.value !== undefined && item.value !== ""
+  );
 
   return (
     <main className="min-h-screen bg-[#171820] px-4 py-8 text-white sm:px-6 sm:py-12">
@@ -192,7 +237,9 @@ export default function WorkoutDetails() {
             ) : (
               <div className="p-8 text-center text-gray-500">
                 <p className="text-6xl">🏋️</p>
-                <p className="mt-4">Workout image unavailable</p>
+                <p className="mt-4">
+                  Workout image unavailable
+                </p>
               </div>
             )}
           </div>
@@ -227,6 +274,7 @@ export default function WorkoutDetails() {
                   <p className="text-[10px] font-bold tracking-wider text-gray-400">
                     {item.label}
                   </p>
+
                   <p className="mt-2 break-words font-bold text-[#DFFF36]">
                     {String(item.value)}
                   </p>
@@ -251,20 +299,30 @@ export default function WorkoutDetails() {
             </div>
 
             {message && (
-              <p aria-live="polite" className="mt-4 text-sm text-[#DFFF36]">
+              <p
+                aria-live="polite"
+                className="mt-4 text-sm text-[#DFFF36]"
+              >
                 {message}
               </p>
             )}
 
             {instructions.length > 0 && (
               <section className="mt-9">
-                <h2 className="text-xl font-black">How to Perform</h2>
+                <h2 className="text-xl font-black">
+                  How to Perform
+                </h2>
+
                 <ol className="mt-4 space-y-3">
                   {instructions.map((step, index) => (
-                    <li key={index} className="flex gap-3 text-sm leading-6 text-gray-300">
+                    <li
+                      key={index}
+                      className="flex gap-3 text-sm leading-6 text-gray-300"
+                    >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#DFFF36] font-black text-black">
                         {index + 1}
                       </span>
+
                       <span>{step}</span>
                     </li>
                   ))}
